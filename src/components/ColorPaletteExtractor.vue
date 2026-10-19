@@ -153,6 +153,10 @@
           <div class="flex items-center gap-2">
             <span class="text-xs font-medium text-zinc-300">Hasil Analisis</span>
             <span class="text-[11px] text-zinc-500 font-mono">({{ paletteColors.length }} nada terdeteksi)</span>
+            <!-- Selection counter badge -->
+            <span class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300">
+              {{ selectedHexList.length }} dipilih
+            </span>
             <!-- Small non-intrusive loading indicator when recalculating -->
             <span v-if="isLoading" class="inline-flex items-center gap-1.5 text-[11px] font-mono text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-full">
               <span class="w-2 h-2 border border-zinc-400 border-t-transparent rounded-full animate-spin"></span>
@@ -160,7 +164,21 @@
             </span>
           </div>
 
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- EXPORT AS IMAGE BUTTON (Featured User Feature) -->
+            <button
+              type="button"
+              @click="openExportModal"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700 bg-zinc-100 text-zinc-950 font-semibold text-xs hover:bg-white hover:shadow-[0_0_15px_rgba(255,255,255,0.15)] transition-all focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:outline-none"
+              title="Ekspor palet pilihan menjadi gambar grafis kartu"
+            >
+              <svg class="w-3.5 h-3.5 text-zinc-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+              </svg>
+              Ekspor Gambar ({{ selectedHexList.length }})
+            </button>
+
+            <!-- Change image button -->
             <button
               type="button"
               @click="triggerFileInput"
@@ -240,9 +258,32 @@
                     Primary
                   </span>
                 </div>
-                <span class="text-[11px] text-zinc-400 font-mono">
-                  {{ dominantColor.isLight ? 'Nada Terang' : 'Nada Gelap' }}
-                </span>
+                <div class="flex items-center gap-2">
+                  <!-- Checkbox toggle for dominant color -->
+                  <button
+                    type="button"
+                    @click.stop="toggleColorSelection(dominantColor.hex)"
+                    class="inline-flex items-center gap-1.5 text-[11px] font-mono text-zinc-400 hover:text-zinc-200"
+                    :aria-label="isColorSelected(dominantColor.hex) ? 'Hapus warna dominan dari ekspor' : 'Sertakan warna dominan ke ekspor'"
+                  >
+                    <span
+                      :class="[
+                        'w-4 h-4 rounded border flex items-center justify-center transition-colors',
+                        isColorSelected(dominantColor.hex)
+                          ? 'bg-zinc-100 border-zinc-100 text-zinc-950'
+                          : 'border-zinc-700 bg-zinc-850 hover:border-zinc-500'
+                      ]"
+                    >
+                      <svg v-if="isColorSelected(dominantColor.hex)" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    </span>
+                    <span>Pilih</span>
+                  </button>
+                  <span class="text-[11px] text-zinc-400 font-mono">
+                    {{ dominantColor.isLight ? 'Nada Terang' : 'Nada Gelap' }}
+                  </span>
+                </div>
               </div>
 
               <div class="flex items-stretch gap-3">
@@ -283,11 +324,30 @@
           <!-- Right column: Extracted Palette Grid -->
           <div class="lg:col-span-7 flex flex-col gap-4">
             <div class="flex items-center justify-between">
-              <h3 class="text-xs font-medium text-zinc-300">Variasi Palet Harmonis</h3>
-              <p class="text-[11px] text-zinc-400">Klik pada kartu untuk menyalin nilai warna</p>
+              <div class="flex items-center gap-2">
+                <h3 class="text-xs font-medium text-zinc-300">Variasi Palet Harmonis</h3>
+                <span class="text-[11px] text-zinc-500">Klik kartu untuk salin, centang untuk ekspor</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  @click="selectAllColors"
+                  class="text-[11px] font-mono text-zinc-400 hover:text-zinc-200 underline decoration-zinc-700"
+                >
+                  Pilih Semua
+                </button>
+                <span class="text-zinc-700">|</span>
+                <button
+                  type="button"
+                  @click="deselectAllColors"
+                  class="text-[11px] font-mono text-zinc-400 hover:text-zinc-200 underline decoration-zinc-700"
+                >
+                  Batal Pilih
+                </button>
+              </div>
             </div>
 
-            <!-- Swatches Grid with micro-interactions -->
+            <!-- Swatches Grid with selection checkboxes & micro-interactions -->
             <div
               :class="[
                 'grid grid-cols-2 sm:grid-cols-3 gap-3.5 transition-opacity duration-200',
@@ -303,7 +363,12 @@
                 tabindex="0"
                 role="button"
                 :aria-label="`Warna ${index + 1}: ${color.hex}, klik untuk menyalin`"
-                class="group rounded-xl border border-zinc-800/90 bg-zinc-900/70 overflow-hidden cursor-pointer hover:border-zinc-700 hover:-translate-y-1 hover:shadow-lg transition-all duration-200 focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:outline-none flex flex-col"
+                :class="[
+                  'group rounded-xl border overflow-hidden cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-200 focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:outline-none flex flex-col',
+                  isColorSelected(color.hex)
+                    ? 'border-zinc-700 bg-zinc-900/90 shadow-sm'
+                    : 'border-zinc-800/80 bg-zinc-900/50 opacity-80'
+                ]"
               >
                 <!-- Color Display Block -->
                 <div
@@ -313,15 +378,33 @@
                   <!-- Subtle corner tag index -->
                   <span
                     :class="[
-                      'absolute top-2 left-2 text-[10px] font-mono font-medium px-1.5 py-0.5 rounded backdrop-blur-sm transition-opacity opacity-70 group-hover:opacity-100',
+                      'absolute top-2 left-2 text-[10px] font-mono font-medium px-1.5 py-0.5 rounded backdrop-blur-sm transition-opacity opacity-75 group-hover:opacity-100',
                       color.isLight ? 'bg-black/20 text-zinc-900 border border-black/10' : 'bg-white/20 text-zinc-100 border border-white/10'
                     ]"
                   >
                     0{{ index + 1 }}
                   </span>
 
+                  <!-- Checkbox toggle button in top right of swatch -->
+                  <button
+                    type="button"
+                    @click.stop="toggleColorSelection(color.hex)"
+                    :title="isColorSelected(color.hex) ? 'Keluarkan dari ekspor' : 'Sertakan dalam ekspor'"
+                    :class="[
+                      'absolute top-2 right-2 w-5 h-5 rounded-md flex items-center justify-center transition-all shadow-sm focus:outline-none',
+                      isColorSelected(color.hex)
+                        ? 'bg-zinc-950/90 text-white border border-white/30 scale-100'
+                        : 'bg-black/30 text-white/50 border border-white/20 hover:scale-110 hover:text-white'
+                    ]"
+                  >
+                    <svg v-if="isColorSelected(color.hex)" class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                    <span v-else class="w-1.5 h-1.5 rounded-full bg-white/40"></span>
+                  </button>
+
                   <!-- Hover copy badge -->
-                  <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/15">
+                  <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/15 pointer-events-none">
                     <span
                       :class="[
                         'text-[10px] font-mono font-medium px-2 py-1 rounded shadow-sm backdrop-blur-md',
@@ -362,6 +445,291 @@
       </section>
     </main>
 
+    <!-- EXPORT IMAGE MODAL (Card graphic export matching reference) -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-300 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-200 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="isExportModalOpen"
+          class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+          @click.self="closeExportModal"
+          @keydown.esc="closeExportModal"
+        >
+          <div
+            class="w-full max-w-2xl bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-title"
+          >
+            <!-- Modal Header -->
+            <div class="px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
+              <div>
+                <h3 id="modal-title" class="text-sm font-semibold text-zinc-100 tracking-tight">
+                  Ekspor Kartu Palet Gambar
+                </h3>
+                <p class="text-[11px] text-zinc-400">
+                  Kartu grafis presisi tinggi, siap diunduh atau disalin ke clipboard
+                </p>
+              </div>
+              <button
+                type="button"
+                @click="closeExportModal"
+                class="w-7 h-7 rounded-lg border border-zinc-800 bg-zinc-850 text-zinc-400 hover:text-zinc-100 flex items-center justify-center transition-colors focus-visible:ring-1 focus-visible:ring-zinc-400"
+                aria-label="Tutup modal"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- Modal Content (Scrollable) -->
+            <div class="p-5 overflow-y-auto space-y-5">
+              <!-- Live Card Graphic Preview (Replicates the reference image design) -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="text-zinc-400 font-medium">Pratinjau Kartu (1200 x 750 px)</span>
+                  <span class="font-mono text-[11px] text-zinc-400">{{ exportColorsList.length }} warna terpilih</span>
+                </div>
+
+                <div
+                  :class="[
+                    'w-full aspect-[16/10] rounded-xl overflow-hidden shadow-2xl border transition-colors flex flex-col',
+                    exportTheme === 'light'
+                      ? 'bg-white border-zinc-300 text-zinc-900'
+                      : 'bg-zinc-950 border-zinc-800 text-zinc-100'
+                  ]"
+                >
+                  <!-- Card Header: Title and Mark -->
+                  <div class="h-[35%] px-6 sm:px-8 flex items-center justify-between">
+                    <h4
+                      :class="[
+                        'text-xl sm:text-2xl font-bold tracking-tight truncate',
+                        exportTheme === 'light' ? 'text-zinc-900' : 'text-zinc-100'
+                      ]"
+                    >
+                      {{ exportTitle || 'Chroma Palette' }}
+                    </h4>
+                    <!-- Minimalist geometric watermark icon -->
+                    <div
+                      :class="[
+                        'w-5 h-5 grid grid-cols-2 gap-0.5 shrink-0 opacity-80',
+                        exportTheme === 'light' ? 'text-zinc-900' : 'text-zinc-100'
+                      ]"
+                    >
+                      <span class="border border-current rounded-[1px]"></span>
+                      <span class="border border-current rounded-[1px]"></span>
+                      <span class="border border-current rounded-[1px]"></span>
+                      <span class="border border-current rounded-[1px]"></span>
+                    </div>
+                  </div>
+
+                  <!-- Card Color Stripes: Vertical Columns filling remaining height -->
+                  <div class="flex-1 w-full flex">
+                    <div
+                      v-if="exportColorsList.length === 0"
+                      class="flex-1 flex items-center justify-center text-xs text-zinc-400 bg-zinc-900/50"
+                    >
+                      Pilih minimal 1 warna di bawah ini
+                    </div>
+                    <div
+                      v-for="color in exportColorsList"
+                      :key="'preview-' + color.hex"
+                      class="flex-1 h-full flex flex-col justify-end items-center pb-3 sm:pb-4 transition-all"
+                      :style="{ backgroundColor: color.hex }"
+                    >
+                      <span
+                        v-if="exportShowHex"
+                        :class="[
+                          'font-mono text-[11px] sm:text-xs font-semibold tracking-wider select-none px-1 py-0.5 rounded',
+                          color.isLight ? 'text-zinc-900' : 'text-white'
+                        ]"
+                      >
+                        {{ exportFormat === 'RGB' ? color.rgbString : color.hex }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Controls: Title & Theme -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <!-- Palette Title Input -->
+                <div class="space-y-1">
+                  <label for="export-title-input" class="text-xs text-zinc-400 font-medium">Judul Palet:</label>
+                  <input
+                    id="export-title-input"
+                    v-model="exportTitle"
+                    type="text"
+                    maxlength="40"
+                    placeholder="Contoh: Tropical punch"
+                    class="w-full px-3 py-1.5 rounded-lg border border-zinc-800 bg-zinc-950 text-xs text-zinc-100 placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+                  />
+                </div>
+
+                <!-- Card Theme & Format Switchers -->
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="space-y-1">
+                    <span class="text-xs text-zinc-400 font-medium">Tema Kartu:</span>
+                    <div class="flex rounded-lg bg-zinc-950 border border-zinc-800 p-0.5 text-xs">
+                      <button
+                        type="button"
+                        @click="exportTheme = 'light'"
+                        :class="[
+                          'flex-1 py-1 rounded text-center text-[11px] font-medium transition-colors',
+                          exportTheme === 'light' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400 hover:text-zinc-200'
+                        ]"
+                      >
+                        Terang
+                      </button>
+                      <button
+                        type="button"
+                        @click="exportTheme = 'dark'"
+                        :class="[
+                          'flex-1 py-1 rounded text-center text-[11px] font-medium transition-colors',
+                          exportTheme === 'dark' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400 hover:text-zinc-200'
+                        ]"
+                      >
+                        Gelap
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="space-y-1">
+                    <span class="text-xs text-zinc-400 font-medium">Kode Warna:</span>
+                    <div class="flex rounded-lg bg-zinc-950 border border-zinc-800 p-0.5 text-xs">
+                      <button
+                        type="button"
+                        @click="exportFormat = 'HEX'"
+                        :class="[
+                          'flex-1 py-1 rounded text-center text-[11px] font-mono font-medium transition-colors',
+                          exportFormat === 'HEX' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400 hover:text-zinc-200'
+                        ]"
+                      >
+                        HEX
+                      </button>
+                      <button
+                        type="button"
+                        @click="exportFormat = 'RGB'"
+                        :class="[
+                          'flex-1 py-1 rounded text-center text-[11px] font-mono font-medium transition-colors',
+                          exportFormat === 'RGB' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400 hover:text-zinc-200'
+                        ]"
+                      >
+                        RGB
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Color Selection Chips (The requested feature: choose all or some) -->
+              <div class="space-y-2">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="text-zinc-300 font-medium">Pilih Warna yang Dimasukkan:</span>
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      @click="selectAllColors"
+                      class="text-[11px] font-mono text-zinc-400 hover:text-zinc-200 underline decoration-zinc-700"
+                    >
+                      Pilih Semua
+                    </button>
+                    <span class="text-zinc-700">|</span>
+                    <button
+                      type="button"
+                      @click="deselectAllColors"
+                      class="text-[11px] font-mono text-zinc-400 hover:text-zinc-200 underline decoration-zinc-700"
+                    >
+                      Batal Semua
+                    </button>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2 p-2.5 rounded-xl border border-zinc-800 bg-zinc-950">
+                  <button
+                    v-for="color in availableColorsForExport"
+                    :key="'chip-' + color.hex"
+                    type="button"
+                    @click="toggleColorSelection(color.hex)"
+                    :class="[
+                      'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-xs font-mono transition-all',
+                      isColorSelected(color.hex)
+                        ? 'bg-zinc-850 border-zinc-600 text-zinc-100 shadow-sm'
+                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700 opacity-60'
+                    ]"
+                  >
+                    <span
+                      class="w-3.5 h-3.5 rounded-full border border-black/20 shrink-0 shadow-inner"
+                      :style="{ backgroundColor: color.hex }"
+                    ></span>
+                    <span>{{ color.hex }}</span>
+                    <svg
+                      v-if="isColorSelected(color.hex)"
+                      class="w-3 h-3 text-emerald-400 shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width="3"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Modal Footer: Action Buttons -->
+            <div class="px-5 py-3.5 border-t border-zinc-800 bg-zinc-950 flex flex-wrap items-center justify-between gap-3">
+              <span class="text-[11px] font-mono text-zinc-400">
+                Format gambar: PNG Retina (1200 x 750)
+              </span>
+
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  @click="closeExportModal"
+                  class="px-3 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-xs font-medium text-zinc-300 hover:text-zinc-100 hover:border-zinc-700 transition-colors"
+                >
+                  Tutup
+                </button>
+
+                <button
+                  type="button"
+                  @click="copyImageToClipboard"
+                  :disabled="exportColorsList.length === 0"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700 bg-zinc-800 text-xs font-medium text-zinc-100 hover:bg-zinc-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <svg class="w-3.5 h-3.5 text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+                  </svg>
+                  Salin Gambar
+                </button>
+
+                <button
+                  type="button"
+                  @click="downloadImageCard"
+                  :disabled="exportColorsList.length === 0"
+                  class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-zinc-700 bg-zinc-100 text-zinc-950 font-semibold text-xs hover:bg-white hover:shadow-[0_0_15px_rgba(255,255,255,0.15)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <svg class="w-3.5 h-3.5 text-zinc-950" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                  </svg>
+                  Unduh Gambar (PNG)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <!-- Toast Notification: Minimalist Floating Feedback -->
     <Teleport to="body">
       <Transition
@@ -396,7 +764,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
 import ColorThief from 'colorthief';
 
 // ==========================================
@@ -417,6 +785,16 @@ const currentFileName = ref('');
 const dominantColor = ref(null);
 const paletteColors = ref([]);
 
+// Set of selected HEX codes for export
+const selectedHexSet = ref(new Set());
+
+// Export Modal States
+const isExportModalOpen = ref(false);
+const exportTitle = ref('Tropical punch');
+const exportTheme = ref('light'); // 'light' (matching user reference) or 'dark'
+const exportFormat = ref('HEX');
+const exportShowHex = ref(true);
+
 // Keep the loaded in-memory image cached so changing color count is instant
 let loadedImageCache = null;
 
@@ -427,6 +805,56 @@ const toast = reactive({
   colorHex: '',
   timer: null,
 });
+
+// ==========================================
+// Computed Color Helpers for Export
+// ==========================================
+// Combine dominant and palette colors uniquely
+const availableColorsForExport = computed(() => {
+  const list = [];
+  const seen = new Set();
+  if (dominantColor.value) {
+    list.push(dominantColor.value);
+    seen.add(dominantColor.value.hex);
+  }
+  paletteColors.value.forEach((c) => {
+    if (!seen.has(c.hex)) {
+      list.push(c);
+      seen.add(c.hex);
+    }
+  });
+  return list;
+});
+
+const selectedHexList = computed(() => {
+  return Array.from(selectedHexSet.value);
+});
+
+const exportColorsList = computed(() => {
+  return availableColorsForExport.value.filter((c) => selectedHexSet.value.has(c.hex));
+});
+
+function isColorSelected(hex) {
+  return selectedHexSet.value.has(hex);
+}
+
+function toggleColorSelection(hex) {
+  if (selectedHexSet.value.has(hex)) {
+    selectedHexSet.value.delete(hex);
+  } else {
+    selectedHexSet.value.add(hex);
+  }
+}
+
+function selectAllColors() {
+  availableColorsForExport.value.forEach((c) => {
+    selectedHexSet.value.add(c.hex);
+  });
+}
+
+function deselectAllColors() {
+  selectedHexSet.value.clear();
+}
 
 // ==========================================
 // Color Helper Functions (Pure and Accessible)
@@ -560,6 +988,139 @@ async function exportJsonArray() {
 }
 
 // ==========================================
+// High-Resolution Palette Card Image Generator (Canvas)
+// ==========================================
+function generatePaletteCanvas(colors, options = {}) {
+  const width = 1200;
+  const height = 750;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+
+  const isLight = options.theme === 'light';
+  const bgColor = isLight ? '#ffffff' : '#09090b';
+  const textColor = isLight ? '#18181b' : '#f4f4f5';
+
+  // Fill card background
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, width, height);
+
+  // Header section (approx 35% height)
+  const headerHeight = Math.round(height * 0.35);
+  const paddingX = Math.round(width * 0.06);
+
+  // Draw Title
+  ctx.fillStyle = textColor;
+  ctx.font = '700 48px "Plus Jakarta Sans", system-ui, -apple-system, sans-serif';
+  ctx.textBaseline = 'middle';
+  const titleText = options.title || 'Chroma Palette';
+  ctx.fillText(titleText, paddingX, headerHeight / 2);
+
+  // Draw Minimalist Mark in top right corner
+  const iconX = width - paddingX - 26;
+  const iconY = headerHeight / 2 - 13;
+  ctx.strokeStyle = textColor;
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(iconX, iconY, 11, 11);
+  ctx.strokeRect(iconX + 15, iconY, 11, 11);
+  ctx.strokeRect(iconX, iconY + 15, 11, 11);
+  ctx.strokeRect(iconX + 15, iconY + 15, 11, 11);
+
+  // Vertical Color Stripes section (remaining 65% height)
+  const stripeTop = headerHeight;
+  const stripeHeight = height - headerHeight;
+  const count = colors.length;
+  const stripeWidth = width / count;
+
+  colors.forEach((color, i) => {
+    const x = i * stripeWidth;
+
+    // Draw solid color column
+    ctx.fillStyle = color.hex;
+    ctx.fillRect(x, stripeTop, stripeWidth, stripeHeight);
+
+    // Draw label at bottom of each stripe with WCAG AA contrast calculation
+    if (options.showHex !== false) {
+      const isLightBg = calculateLuminance(color.rgb) > 0.45;
+      ctx.fillStyle = isLightBg ? '#18181b' : '#ffffff';
+      ctx.font = '600 22px "JetBrains Mono", ui-monospace, SFMono-Regular, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      const labelText = options.format === 'RGB' ? color.rgbString : color.hex;
+      ctx.fillText(labelText, x + stripeWidth / 2, height - Math.round(height * 0.05));
+    }
+  });
+
+  return canvas;
+}
+
+function openExportModal() {
+  if (selectedHexSet.value.size === 0) {
+    selectAllColors();
+  }
+  // Set default title based on file name if default title not edited
+  if (currentFileName.value && (!exportTitle.value || exportTitle.value === 'Tropical punch')) {
+    const cleanName = currentFileName.value.replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' ');
+    exportTitle.value = cleanName;
+  }
+  isExportModalOpen.value = true;
+}
+
+function closeExportModal() {
+  isExportModalOpen.value = false;
+}
+
+function downloadImageCard() {
+  if (exportColorsList.value.length === 0) return;
+
+  const canvas = generatePaletteCanvas(exportColorsList.value, {
+    title: exportTitle.value || 'Chroma Palette',
+    theme: exportTheme.value,
+    format: exportFormat.value,
+    showHex: exportShowHex.value,
+  });
+
+  const safeFileName = (exportTitle.value || 'palette')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+
+  const link = document.createElement('a');
+  link.download = `${safeFileName}-palette.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+
+  showToast('Gambar palet berhasil diunduh');
+}
+
+async function copyImageToClipboard() {
+  if (exportColorsList.value.length === 0) return;
+
+  const canvas = generatePaletteCanvas(exportColorsList.value, {
+    title: exportTitle.value || 'Chroma Palette',
+    theme: exportTheme.value,
+    format: exportFormat.value,
+    showHex: exportShowHex.value,
+  });
+
+  try {
+    canvas.toBlob(async (blob) => {
+      if (blob && navigator.clipboard?.write) {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        showToast('Gambar palet disalin ke clipboard');
+      } else {
+        showToast('Peramban tidak mendukung salin gambar langsung');
+      }
+    }, 'image/png');
+  } catch {
+    showToast('Gagal menyalin gambar, gunakan tombol Unduh');
+  }
+}
+
+// ==========================================
 // Resilient Color Extraction with ColorThief & Canvas Fallback
 // ==========================================
 function extractColorsFromCanvas(canvas, targetCount) {
@@ -588,7 +1149,7 @@ function extractColorsFromCanvas(canvas, targetCount) {
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imgData.data;
   const colorBuckets = new Map();
-  const step = 4 * 4; // Sample every 4th pixel for speed
+  const step = 4 * 4;
 
   for (let i = 0; i < data.length; i += step) {
     const a = data[i + 3];
@@ -658,7 +1219,6 @@ function extractColorsFromCanvas(canvas, targetCount) {
 
 // In-memory extraction without DOM dependency
 async function extractPaletteFromImageObject(imgElement) {
-  // Create an offscreen canvas downsampled to max 300px
   const offscreenCanvas = document.createElement('canvas');
   const ctx = offscreenCanvas.getContext('2d');
   const maxDim = 300;
@@ -688,6 +1248,15 @@ async function extractPaletteFromImageObject(imgElement) {
   if (Array.isArray(palette) && palette.length > 0) {
     paletteColors.value = palette.map(createColorObject);
   }
+
+  // Pre-select all extracted colors
+  selectedHexSet.value.clear();
+  if (dominantColor.value) {
+    selectedHexSet.value.add(dominantColor.value.hex);
+  }
+  paletteColors.value.forEach((c) => {
+    selectedHexSet.value.add(c.hex);
+  });
 }
 
 // ==========================================
@@ -698,7 +1267,6 @@ async function processImageSource(src, fileName) {
   errorMessage.value = '';
 
   try {
-    // Load image strictly in JavaScript memory first
     const inMemoryImg = new Image();
     inMemoryImg.crossOrigin = 'anonymous';
 
@@ -708,13 +1276,9 @@ async function processImageSource(src, fileName) {
       inMemoryImg.src = src;
     });
 
-    // Cache the loaded image object for instant palette resizing
     loadedImageCache = inMemoryImg;
-
-    // Run extraction
     await extractPaletteFromImageObject(inMemoryImg);
 
-    // Update UI state only after colors are calculated
     currentFileName.value = fileName;
     imageSrc.value = src;
   } catch (err) {
@@ -735,7 +1299,6 @@ function processFile(file) {
 
   errorMessage.value = '';
 
-  // Revoke previous blob URL if exists
   if (imageSrc.value && imageSrc.value.startsWith('blob:')) {
     URL.revokeObjectURL(imageSrc.value);
   }
@@ -788,6 +1351,8 @@ function resetWorkspace() {
   paletteColors.value = [];
   errorMessage.value = '';
   loadedImageCache = null;
+  selectedHexSet.value.clear();
+  isExportModalOpen.value = false;
 }
 
 // ==========================================
@@ -867,12 +1432,20 @@ function handlePaste(event) {
   }
 }
 
+function handleKeydown(event) {
+  if (event.key === 'Escape' && isExportModalOpen.value) {
+    closeExportModal();
+  }
+}
+
 onMounted(() => {
   window.addEventListener('paste', handlePaste);
+  window.addEventListener('keydown', handleKeydown);
 });
 
 onUnmounted(() => {
   window.removeEventListener('paste', handlePaste);
+  window.removeEventListener('keydown', handleKeydown);
   if (imageSrc.value && imageSrc.value.startsWith('blob:')) {
     URL.revokeObjectURL(imageSrc.value);
   }
