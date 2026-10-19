@@ -6,10 +6,10 @@
         <div class="flex items-center gap-2.5">
           <div class="w-2.5 h-2.5 rounded-sm bg-zinc-300 shadow-[0_0_8px_rgba(255,255,255,0.2)]"></div>
           <h1 class="text-xl sm:text-2xl font-semibold tracking-tight text-zinc-100">
-            Chroma Extract
+            Clever Code Palette
           </h1>
           <span class="text-[11px] font-medium tracking-wide uppercase px-2 py-0.5 rounded border border-zinc-800 bg-zinc-900 text-zinc-400">
-            Palette Tool
+            Extractor
           </span>
         </div>
         <p class="text-xs sm:text-sm text-zinc-400 font-normal">
@@ -514,7 +514,7 @@
                         exportTheme === 'light' ? 'text-zinc-900' : 'text-zinc-100'
                       ]"
                     >
-                      {{ exportTitle || 'Chroma Palette' }}
+                      {{ exportTitle || 'Clever Code Palette' }}
                     </h4>
                     <!-- Minimalist geometric watermark icon -->
                     <div
@@ -1014,7 +1014,7 @@ function generatePaletteCanvas(colors, options = {}) {
   ctx.fillStyle = textColor;
   ctx.font = '700 48px "Plus Jakarta Sans", system-ui, -apple-system, sans-serif';
   ctx.textBaseline = 'middle';
-  const titleText = options.title || 'Chroma Palette';
+  const titleText = options.title || 'Clever Code Palette';
   ctx.fillText(titleText, paddingX, headerHeight / 2);
 
   // Draw Minimalist Mark in top right corner
@@ -1075,7 +1075,7 @@ function downloadImageCard() {
   if (exportColorsList.value.length === 0) return;
 
   const canvas = generatePaletteCanvas(exportColorsList.value, {
-    title: exportTitle.value || 'Chroma Palette',
+    title: exportTitle.value || 'Clever Code Palette',
     theme: exportTheme.value,
     format: exportFormat.value,
     showHex: exportShowHex.value,
@@ -1098,7 +1098,7 @@ async function copyImageToClipboard() {
   if (exportColorsList.value.length === 0) return;
 
   const canvas = generatePaletteCanvas(exportColorsList.value, {
-    title: exportTitle.value || 'Chroma Palette',
+    title: exportTitle.value || 'Clever Code Palette',
     theme: exportTheme.value,
     format: exportFormat.value,
     showHex: exportShowHex.value,

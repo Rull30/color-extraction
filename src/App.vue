@@ -4,7 +4,7 @@
     
     <!-- Minimalist footer -->
     <footer class="w-full border-t border-zinc-900 py-6 px-4 text-center text-xs text-zinc-400 font-mono">
-      <span>Chroma &copy; 2026. Non-blocking client-side color extraction.</span>
+      <span>Crafted by Clever Code &copy; 2026. Client-side color extraction.</span>
     </footer>
   </div>
 </template>
